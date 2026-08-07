@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>receipt — verify a GitHub claim</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.25rem; }
+  p.sub { color: #888; margin: 0 0 2rem; font-size: 0.9rem; }
+  label { display: block; font-size: 0.85rem; margin: 1rem 0 0.35rem; color: #888; }
+  input, textarea {
+    width: 100%;
+    font: inherit;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid #666;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+  }
+  textarea { min-height: 4.5rem; resize: vertical; }
+  button {
+    margin-top: 1.25rem;
+    font: inherit;
+    padding: 0.6rem 1.1rem;
+    border: 1px solid #666;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  button:hover { background: rgba(128,128,128,0.15); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #result {
+    margin-top: 2rem;
+    padding: 1rem 1.1rem;
+    border-radius: 8px;
+    border: 1px solid #666;
+    display: none;
+    white-space: pre-wrap;
+  }
+  #result.show { display: block; }
+  .verdict { font-weight: 700; font-size: 1rem; letter-spacing: 0.02em; }
+  .MATCH .verdict, .CLOSE .verdict { color: #2da44e; }
+  .MISMATCH .verdict { color: #cf222e; }
+  .UNVERIFIABLE .verdict, .UNREADABLE .verdict, .ERROR .verdict { color: #bf8700; }
+  .INFO .verdict { color: #888; }
+  .meta { font-size: 0.85rem; color: #888; margin-top: 0.5rem; }
+  footer { margin-top: 3rem; font-size: 0.8rem; color: #888; }
+  a { color: inherit; }
+</style>
+</head>
+<body>
+  <h1>receipt</h1>
+  <p class="sub">Paste a GitHub repo and a claim about it. Get a verdict, not a vibe.</p>
+
+  <label for="repo">Repo (owner/name, or a github.com URL)</label>
+  <input id="repo" placeholder="adamtpang/skill.supply" autocomplete="off" />
+
+  <label for="claim">The claim (optional, e.g. from a resume or a cold email)</label>
+  <textarea id="claim" placeholder="39 commits, empty repo to production in under two weeks"></textarea>
+
+  <button id="go">Check it</button>
+
+  <div id="result"></div>
+
+  <footer>
+    Uses only the public GitHub API, no auth, no database, no tracking.
+    <a href="https://github.com/adamtpang/receipt" target="_blank" rel="noopener">source</a>
+  </footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+$("go").addEventListener("click", async () => {
+  const repo = $("repo").value.trim();
+  const claim = $("claim").value.trim();
+  const box = $("result");
+  if (!repo) {
+    box.className = "show ERROR";
+    box.textContent = "Paste a repo first.";
+    return;
+  }
+  $("go").disabled = true;
+  $("go").textContent = "Checking...";
+  box.className = "show INFO";
+  box.textContent = "Asking GitHub...";
+
+  try {
+    const res = await fetch("/api/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ repo, claim }),
+    });
+    const data = await res.json();
+    box.className = "show " + data.verdict;
+    let lines = [`<span class="verdict">${data.verdict}</span>`, "", data.note];
+    if (data.htmlUrl) {
+      lines.push("", `<span class="meta">${data.htmlUrl}${data.stars != null ? " · " + data.stars + " stars" : ""}</span>`);
+    }
+    box.innerHTML = lines.join("\n");
+  } catch (err) {
+    box.className = "show ERROR";
+    box.textContent = "Request failed: " + err.message;
+  } finally {
+    $("go").disabled = false;
+    $("go").textContent = "Check it";
+  }
+});
+
+$("repo").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
+</script>
+</body>
+</html>

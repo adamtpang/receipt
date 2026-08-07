@@ -1,0 +1,13 @@
+{
+  "name": "receipt",
+  "version": "1.0.0",
+  "description": "Paste a GitHub repo and a claim about it. Get a verdict, not a vibe.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
